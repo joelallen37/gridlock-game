@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * {
+            font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(12, 50px);
+            grid-gap: 5px;
+        }
+
+        .tile {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #ccc;
+            text-align: center;
+            line-height: 50px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .p1selected {
+            background-color: lightblue;
+        }
+
+        .p1previoustile {
+            background-color: #c6e2ff; /* Lighter blue */
+        }
+
+        .p2selected {
+            background-color: lightcoral;
+        }
+
+        .p2previoustile {
+            background-color: #ffdcc6; /* Lighter coral */
+        }
+        
+        #turnText {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .blocked {
+            background-color: black;
+        }
+
+        #buttons {
+            margin: 20px;
+        }
+
+        #blockButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50; /* Green background */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #button2:hover {
+            background-color: #45a049; /* Darker green on hover */
+        }
+
+    </style>
+    <title>Gridlock Game</title>
+</head>
+<body>
+    <h1>G R I D L O C K</h1>
+    <div id="grid"></div>
+    <div id="turnText">PLAYER 1's TURN</div>
+    <div id="buttons">
+        <button id="blockButton" onclick="startBlockingMode()">BLOCK</button> 
+    </div>
+    <div id="reset"></div>
+    <script>
+        // Set the size of the grid
+const gridSize = 12;
+
+// Initialize variables for player 1
+let player1Path = [];
+let player1Position = { row: null, col: null };
+
+// Initialize variables for player 2
+let player2Path = [];
+let player2Position = { row: null, col: null };
+
+let playerTurn = 1;
+
+let isBlocking = false;
+
+// Function to create the game grid
+function createGrid() {
+    const grid = document.getElementById('grid');
+
+    // Loop through rows and columns to create tiles
+    for (let row = 0; row < gridSize; row++) {
+        for (let col = 0; col < gridSize; col++) {
+            // Create a tile element
+            const tile = document.createElement('div');
+            tile.classList.add('tile');
+            tile.dataset.row = row;
+            tile.dataset.col = col;
+            tile.addEventListener('click', onTileClick);
+            grid.appendChild(tile);
+        }
+    }
+}
+
+function startBlockingMode() {
+    isBlocking = true;
+    alert("Select a tile to block.");
+}
+
+function createBlock (row, col) {
+    const blockedTile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
+    blockedTile.classList.add('blocked');
+}
+
+// Function to update the player 1's position on the grid
+function updatePlayer1Position(path, position) {
+    const tiles = document.querySelectorAll('.tile');
+    tiles.forEach(tile => tile.classList.remove('p1selected', 'p1previoustile'));
+
+    // Render the path taken by the player
+    path.forEach(position => {
+        const pathTile = document.querySelector(`.tile[data-row="${position.row}"][data-col="${position.col}"]`);
+        pathTile.classList.add('p1previoustile');
+    });
+
+    // Update the selected tile style if the player has made a move
+    if (position.row !== null && position.col !== null) {
+        const currentTile = document.querySelector(`.tile[data-row="${position.row}"][data-col="${position.col}"]`);
+        currentTile.classList.add('p1selected');
+    }
+
+    
+}
+
+// Function to update the player 2's position on the grid
+function updatePlayer2Position(path, position) {
+    const tiles = document.querySelectorAll('.tile');
+    tiles.forEach(tile => tile.classList.remove('p2selected', 'p2previoustile'));
+
+    // Render the path taken by the player
+    path.forEach(position => {
+        const pathTile = document.querySelector(`.tile[data-row="${position.row}"][data-col="${position.col}"]`);
+        pathTile.classList.add('p2previoustile');
+    });
+
+    // Update the selected tile style if the player has made a move
+    if (position.row !== null && position.col !== null) {
+        const currentTile = document.querySelector(`.tile[data-row="${position.row}"][data-col="${position.col}"]`);
+        currentTile.classList.add('p2selected');
+    }
+}
+
+// Function to handle tile click events
+function onTileClick(event) {
+    const selectedRow = parseInt(event.target.dataset.row);
+    const selectedCol = parseInt(event.target.dataset.col);
+
+    const isBlocked = isTileBlocked(selectedRow, selectedCol);
+
+    
+    if (isBlocking && playerTurn == 1) {
+        // Call the blockTile function if the game is in blocking mode
+        blockTile(selectedRow, selectedCol);
+        isBlocking = false; // Reset the blocking mode
+        playerTurn = 2;
+        updateTurnText(); // Update the turn text after blocking
+        return;
+    }
+    
+    else if (isBlocking && playerTurn == 2) {
+        // Call the blockTile function if the game is in blocking mode
+        blockTile(selectedRow, selectedCol);
+        isBlocking = false; // Reset the blocking mode
+        playerTurn = 1;
+        updateTurnText(); // Update the turn text after blocking
+        return;
+    }
+
+    if (playerTurn === 1) {
+
+        if (player1Position.row === null && player1Position.col === null && selectedRow ==0) {
+            // Set player 1's starting position on the first click
+            player1Position.row = selectedRow;
+            player1Position.col = selectedCol;
+            updatePlayer1Position(player1Path, player1Position);
+        } 
+        
+        else if (player1Position.row === null && player1Position.col === null && selectedRow !==0) {
+            alert("select a tile in first row");
+            return;
+        }
+        
+        else if (
+            (Math.abs(selectedRow - player1Position.row) === 1 && selectedCol === player1Position.col) ||
+            (Math.abs(selectedCol - player1Position.col) === 1 && selectedRow === player1Position.row)
+        ) {
+
+            if (isBlocked) {
+            alert('Invalid move! The selected tile is blocked.');
+            return; // Exit the function if the move is blocked
+    }
+            // Update player 1's path and position
+            player1Path.push({ row: player1Position.row, col: player1Position.col });
+            player1Position.row = selectedRow;
+            player1Position.col = selectedCol;
+            updatePlayer1Position(player1Path, player1Position);
+
+            // Check if player 1 has reached the bottom row and display a message
+            if (player1Position.row === gridSize - 1) {
+                alert('Player 1 WINS!');
+                resetGame();
+                return;
+            }
+        } else {
+            // Display an alert for an invalid move
+            alert('Invalid move! Please select a tile adjacent to the current position.');
+            return;
+        }
+    
+    playerTurn = 2; // Switch to player 2's turn
+    updateTurnText();
+    
+    } else if (playerTurn === 2) {
+
+        if (player2Position.row === null && player2Position.col === null && selectedRow == gridSize -1) {
+            // Set player 2's starting position on the first click
+            player2Position.row = selectedRow;
+            player2Position.col = selectedCol;
+            updatePlayer2Position(player2Path, player2Position);
+        } 
+        else if (player2Position.row === null && player2Position.col === null && selectedRow !==0) {
+            alert("select a tile in last row");
+            return;
+        }
+
+        else if (
+            (Math.abs(selectedRow - player2Position.row) === 1 && selectedCol === player2Position.col) ||
+            (Math.abs(selectedCol - player2Position.col) === 1 && selectedRow === player2Position.row)
+        ) {
+            
+
+            if (isBlocked) {
+            alert('Invalid move! The selected tile is blocked.');
+            return; // Exit the function if the move is blocked
+    }
+            // Update player 2's path and position
+            player2Path.push({ row: player2Position.row, col: player2Position.col });
+            player2Position.row = selectedRow;
+            player2Position.col = selectedCol;
+            updatePlayer2Position(player2Path, player2Position);
+
+            // Check if player 2 has reached the bottom row and display a message
+            if (player2Position.row === 0) {
+                alert('Player 2 WINS!');
+                resetGame();
+                return;
+            }
+        } else {
+            // Display an alert for an invalid move
+            alert('Invalid move! Please select a tile adjacent to the current position.');
+            return;
+        }
+
+        playerTurn = 1; // Switch to player 1's turn
+        updateTurnText();
+    }
+}
+
+function updateTurnText() {
+    const turnText = document.getElementById('turnText');
+    turnText.textContent = `PLAYER ${playerTurn}'s TURN`;
+}
+
+
+function blockTile(row, col) {
+    const blockedTile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
+    blockedTile.classList.add('blocked');
+}
+
+//check if tile is blocked when player moves
+function isTileBlocked(row, col) {
+    const tile = document.querySelector(`.tile[data-row="${row}"][data-col="${col}"]`);
+    return tile.classList.contains('blocked');
+}
+
+// Function to reset the game
+function resetGame() {
+    player1Path = [];
+    player1Position = { row: null, col: null };
+    player2Path = [];
+    player2Position = { row: null, col: null };
+    playerTurn = 1; // Reset to player 1's turn
+    updatePlayer1Position(player1Path, player1Position);
+    updatePlayer2Position(player2Path, player2Position);
+
+    // Remove the "blocked" class from all tiles
+    const blockedTiles = document.querySelectorAll('.blocked');
+    blockedTiles.forEach(tile => tile.classList.remove('blocked'));
+}
+
+
+// Attach the createGrid function to the window's onload event
+window.onload = createGrid;
+
+    </script>
+</body>
+</html>
